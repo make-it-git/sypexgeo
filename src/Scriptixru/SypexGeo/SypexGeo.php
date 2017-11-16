@@ -109,6 +109,16 @@ class Sypexgeo
         return empty($data) ? $this->config->get('sypexgeo.default_location', array()) : $data;
     }
 
+    public function getByName($name, $locale = 'ru')
+    {
+        return $this->_sypex->search_db_by_name($name, $locale);
+    }
+
+    public function getCities()
+    {
+        return $this->_sypex->get_cities();
+    }
+
     /**
      * Detect client IP address
      * @return string IP

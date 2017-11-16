@@ -51,8 +51,10 @@ class SxGeo {
 
 	public $batch_mode  = false;
 	public $memory_mode = false;
+    protected $db_file_name = '';
 
 	public function __construct($db_file = 'SxGeoCityMax.dat', $type = SXGEO_FILE){
+        $this->db_file_name = $db_file;
 		$this->fh = fopen($db_file, 'rb');
 		// Сначала убеждаемся, что есть файл базы данных
 		$header = fread($this->fh, 40); // В версии 2.2 заголовок увеличился на 8 байт
@@ -127,6 +129,46 @@ class SxGeo {
 		}
 		return hexdec(bin2hex(substr($str, $min * $this->block_len - $this->id_len, $this->id_len)));
 	}
+
+    /**
+     * @param string $text
+     * @param string $locale ru|en
+     */
+    public function search_db_by_name($text, $locale)
+    {
+        $text = mb_strtolower($text, 'UTF-8');
+        $allCities = $this->get_cities();
+        $cities = [];
+
+        foreach ($allCities as $city) {
+            switch ($locale)
+            {
+                case 'ru':
+                    $name = $city['city']['name_ru'];
+                    break;
+                case 'en':
+                    $name = $city['city']['name_en'];
+                    break;
+            }
+            $name = mb_strtolower($name, 'UTF-8');
+            if (mb_strpos($name, $text) === false) continue;
+            $cities[] = $city;
+        }
+
+        return $cities;
+    }
+
+    public function get_cities() {
+        $db = $this->memory_mode  ? $this->db : fread($this->fh, filesize($this->db_file_name));
+        $index = 0;
+        $cities = [];
+        while($index < $this->info['city_size']) {
+            $index++;
+            $idx = hexdec(bin2hex(substr($db, $index * $this->block_len - $this->id_len, $this->id_len)));
+            $cities[] = $this->parseCity($idx);
+        }
+        return $cities;
+    }
 
 	public function get_num($ip){
 		$ip1n = (int)$ip; // Первый байт
