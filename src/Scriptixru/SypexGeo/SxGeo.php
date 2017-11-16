@@ -159,13 +159,16 @@ class SxGeo {
     }
 
     public function get_cities() {
-        $db = $this->memory_mode  ? $this->db : fread($this->fh, filesize($this->db_file_name));
-        $index = 0;
+        $start = $this->country_size;
+        $offset = 0;
+
         $cities = [];
-        while($index < $this->info['city_size']) {
-            $index++;
-            $idx = hexdec(bin2hex(substr($db, $index * $this->block_len - $this->id_len, $this->id_len)));
-            $cities[] = $this->parseCity($idx);
+        while ($offset < $this->info['city_size']) {
+            $raw = $this->readData($start + $offset, $this->max_city, 2, $recordLength);
+            $offset += $recordLength;
+            $city = $this->parseCity($start + $offset);
+            if (empty($city['city']['id'])) continue;
+            $cities[] = $city;
         }
         return $cities;
     }
@@ -207,7 +210,7 @@ class SxGeo {
 		}
 	}
 
-	protected function readData($seek, $max, $type){
+	protected function readData($seek, $max, $type, &$recordLength = null){
 		$raw = '';
 		if($seek && $max) {
 			if ($this->memory_mode) {
@@ -217,7 +220,7 @@ class SxGeo {
 				$raw = fread($this->fh, $max);
 			}
 		}
-		return $this->unpack($this->pack[$type], $raw);
+		return $this->unpack($this->pack[$type], $raw, $recordLength);
 	}
 
 	protected function parseCity($seek, $full = false){
@@ -248,7 +251,7 @@ class SxGeo {
 		}
 	}
 
-	protected function unpack($pack, $item = ''){
+	protected function unpack($pack, $item = '', &$recordLength = null){
 		$unpacked = array();
 		$empty = empty($item);
 		$pack = explode('/', $pack);
@@ -295,6 +298,7 @@ class SxGeo {
 			$pos += $l;
 			$unpacked[$name] = is_array($v) ? current($v) : $v;
 		}
+        $recordLength = $pos;
 		return $unpacked;
 	}
 
